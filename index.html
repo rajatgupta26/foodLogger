@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Google Sheets API Quickstart</title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+  <p>Google Sheets API Quickstart</p>
+
+  <!--Add buttons to initiate auth sequence and sign out-->
+  <button id="authorize_button" style="display: none;">Authorize</button>
+  <button id="signout_button" style="display: none;">Sign Out</button>
+  <br>
+
+  <table id="foodDetails" style="width:100%">
+    <tr>
+      <th>Date</th>
+      <th>Time</th>
+      <th>Item Name</th>
+      <th>Quantity</th>
+      <th>KCal</th>
+      <th>Protein</th>
+      <th>Carbs</th>
+      <th>Fat</th>
+      <th>Fiber</th>
+    </tr>
+  </table>
+  <br>
+
+  <pre id="content" style="white-space: pre-wrap;"></pre>
+
+  <script type="text/javascript">
+    // Names of columns in the sheet for reference
+    // const columns = ['Timestamp', 'Item name', 'Quantity', 'Time', 'KCal', 'Protein (gm)', 'Carbs (gm)', 'Fat (gm)', 'Fiber (gm)', 'Date'];
+
+    // Client ID and API key from the Developer Console
+    var CLIENT_ID = '978846160909-vkl8q3gkq5lloq3ie6l6ieovj3ajqjhv.apps.googleusercontent.com';
+    var API_KEY = 'AIzaSyA5cD2EYbgjEi8LEc_tpsx17BMGu-6L-Wc';
+
+    // Array of API discovery doc URLs for APIs used by the quickstart
+    var DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
+
+    // Authorization scopes required by the API; multiple scopes can be
+    // included, separated by spaces.
+    var SCOPES = "https://www.googleapis.com/auth/spreadsheets.readonly";
+
+    var authorizeButton = document.getElementById('authorize_button');
+    var signoutButton = document.getElementById('signout_button');
+
+    /**
+     *  On load, called to load the auth2 library and API client library.
+     */
+    function handleClientLoad() {
+      gapi.load('client:auth2', initClient);
+    }
+
+    /**
+     *  Initializes the API client library and sets up sign-in state
+     *  listeners.
+     */
+    function initClient() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES
+      }).then(function () {
+        // Listen for sign-in state changes.
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+        // Handle the initial sign-in state.
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        authorizeButton.onclick = handleAuthClick;
+        signoutButton.onclick = handleSignoutClick;
+      }, function (error) {
+        appendPre(JSON.stringify(error, null, 2));
+      });
+    }
+
+    /**
+     *  Called when the signed in status changes, to update the UI
+     *  appropriately. After a sign-in, the API is called.
+     */
+    function updateSigninStatus(isSignedIn) {
+      if (isSignedIn) {
+        authorizeButton.style.display = 'none';
+        signoutButton.style.display = 'block';
+        logFoodItems();
+      } else {
+        authorizeButton.style.display = 'block';
+        signoutButton.style.display = 'none';
+      }
+    }
+
+    /**
+     *  Sign in the user upon button click.
+     */
+    function handleAuthClick(event) {
+      gapi.auth2.getAuthInstance().signIn();
+    }
+
+    /**
+     *  Sign out the user upon button click.
+     */
+    var aNumber = 1;
+    function handleSignoutClick(event) {
+      // appendTable([{'itemName': 'meow' + aNumber.toString(), date: new Date()}])
+      // aNumber += 1;
+      gapi.auth2.getAuthInstance().signOut();
+    }
+
+    /**
+     * Append a pre element to the body containing the given message
+     * as its text node. Used to display the results of the API call.
+     *
+     * @param {string} message Text to be placed in pre element.
+     */
+    function appendPre(message) {
+      var pre = document.getElementById('content');
+      var textContent = document.createTextNode(message + '\n');
+      pre.appendChild(textContent);
+    }
+
+    function appendTable(rows) {
+      var table = document.getElementById("foodDetails");
+      rows.forEach(element => {
+        console.log(element);
+        var row = table.insertRow();
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+        var cell3 = row.insertCell(2);
+        var cell4 = row.insertCell(3);
+        var cell5 = row.insertCell(4);
+        var cell6 = row.insertCell(5);
+        var cell7 = row.insertCell(6);
+        var cell8 = row.insertCell(7);
+        var cell9 = row.insertCell(8);
+        cell1.innerHTML = element['date'];
+        cell2.innerHTML = element['timeOfDay'];
+        cell3.innerHTML = element['itemName'];
+        cell4.innerHTML = element['quantity'];
+        cell5.innerHTML = element['kcal'];
+        cell6.innerHTML = element['protein'];
+        cell7.innerHTML = element['carbs'];
+        cell8.innerHTML = element['fat'];
+        cell9.innerHTML = element['fiber'];
+      });
+    }
+
+
+    /**
+     * Print the names and majors of students in a sample spreadsheet:
+     * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
+     */
+    function logFoodItems() {
+      gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: '12T00uCVEouLTwLXJGfiMg6JWvAr5Fow8hUxg_81X8-0',
+        range: 'Daily Log!A2:J',
+      }).then(function (response) {
+        var range = response.result;
+        if (range.values.length > 0) {
+          let rowsToInsert = [];
+          for (i = range.values.length - 1; i >= 0; i--) {
+            rowsToInsert.push(parseFoodItemDetailsFromRow(range.values[i]));
+          }
+          appendTable(rowsToInsert);
+        } else {
+          appendPre('No data found.');
+        }
+      }, function (response) {
+        appendPre('Error: ' + response.result.error.message);
+      });
+    }
+
+    function parseFoodItemDetailsFromRow(row) {
+      return {
+        itemName: row[1],
+        quantity: row[2],
+        timeOfDay: row[3],
+        kcal: row[4],
+        protein: row[5],
+        carbs: row[6],
+        fat: row[7],
+        fiber: row[8],
+        date: row[9]
+      }
+    }
+
+  </script>
+
+  <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()"
+    onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+</body>
+
+</html>
